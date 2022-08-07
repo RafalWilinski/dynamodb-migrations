@@ -1,4 +1,3 @@
-import { App, Stack } from "aws-cdk-lib";
 import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 import {
@@ -10,9 +9,6 @@ import {
   ITable,
 } from "functionless";
 import { ScanOutput } from "typesafe-dynamodb/lib/scan";
-
-const app = new App();
-const stack = new Stack(app, "stack");
 
 export type ScanTableOptions = {
   segments: number;
@@ -33,7 +29,7 @@ export class Migration<T extends object> extends Construct {
     super(scope, id);
 
     this.table = Table.fromTable(
-      cdkTable.fromTableArn(stack, "SubjectTable", props.tableArn)
+      cdkTable.fromTableArn(this, "SubjectTable", props.tableArn)
     );
   }
 
@@ -44,7 +40,7 @@ export class Migration<T extends object> extends Construct {
     const totalSegments = options?.segments ?? 10;
     const segments = Array.from({ length: totalSegments }, (_, i) => i);
 
-    new StepFunction(stack, "MigrationStepFunction", async () => {
+    new StepFunction(this, "MigrationStepFunction", async () => {
       return $SFN.map(segments, async (_, index) => {
         let lastEvaluatedKey;
         let firstRun = true;
@@ -61,7 +57,7 @@ export class Migration<T extends object> extends Construct {
           result.LastEvaluatedKey = result.LastEvaluatedKey;
 
           new Function(
-            stack,
+            this,
             "MigrationCallbackFunction",
             await transformFn(this.table, result)
           );
