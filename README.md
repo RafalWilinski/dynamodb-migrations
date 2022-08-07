@@ -1,6 +1,8 @@
 # dynamodb-migrations
 
-[Functionless](https://github.com/functionless/functionless) mini-framework for DynamoDB migrations in AWS CDK. `dynamodb-migrations` leverages [Step Functions](https://aws.amazon.com/step-functions/) to enable massively parallel reads and writes to DynamoDB making your migrations faster.
+> **This repo is heavily in progress!** Readme describes **desired** contract and functionality. Please do not try using it **yet!**. I'm not even sure if it's a good idea.
+
+[Functionless](https://github.com/functionless/functionless)-based mini-framework for DynamoDB migrations in AWS CDK. `dynamodb-migrations` leverages [Step Functions](https://aws.amazon.com/step-functions/) to enable massively parallel reads and writes to DynamoDB making your migrations faster.
 
 `dynamodb-migrations` uses _"Migrations as Infrastructure"_ approach - each migration ends up being a separate State Machine, each one of them is deployed as a separate Stack.
 
@@ -24,8 +26,6 @@ sequenceDiagram
   Custom Resource->>-CloudFormation: End
   CloudFormation-->>-User: Update Complete
 ```
-
-> This repo is heavily in progress! Readme describes **desired** contract and functionality. Please do not try using it **yet!**. I'm not even sure if it's a good idea.
 
 ### Questions to answer / notes
 
