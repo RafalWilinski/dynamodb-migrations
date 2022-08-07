@@ -1,58 +1,74 @@
-import * as appsync from '@aws-cdk/aws-appsync-alpha';
-import { App, aws_dynamodb, Stack } from 'aws-cdk-lib';
-import { AppsyncResolver, Table } from 'functionless';
+import { App, Stack } from "aws-cdk-lib";
+import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
+import { Construct } from "constructs";
+import {
+  $AWS,
+  $SFN,
+  StepFunction,
+  Table,
+  Function,
+  ITable,
+} from "functionless";
+import { ScanOutput } from "typesafe-dynamodb/lib/scan";
 
 const app = new App();
-const stack = new Stack(app, 'stack');
+const stack = new Stack(app, "stack");
 
-interface Person {
-  id: string;
-  name: string;
-}
+export type ScanTableOptions = {
+  segments: number;
+};
 
-const table = new Table<Person, 'id'>(stack, 'Table', {
-  partitionKey: {
-    name: 'id',
-    type: aws_dynamodb.AttributeType.STRING,
-  },
-});
+export type MigrationProps = {
+  tableArn: string;
+};
 
-const api = new appsync.GraphqlApi(stack, 'api', {
-  name: 'api',
-});
+export type TransformFunctionType<T extends object> = (
+  _table: ITable<T, any, any>,
+  result: ScanOutput<any, any, any>
+) => Promise<any>;
 
-const Person = api.addType(
-  new appsync.ObjectType('Person', {
-    definition: {
-      name: appsync.GraphqlType.string(),
-    },
-  }),
-);
+export class Migration<T extends object> extends Construct {
+  public readonly table: ITable<T, any, any>;
+  constructor(scope: Construct, id: string, props: MigrationProps) {
+    super(scope, id);
 
-api.addQuery(
-  'getPerson',
-  new appsync.Field({
-    returnType: Person.attribute(),
-    args: {
-      id: appsync.GraphqlType.string(),
-    },
-  }),
-);
+    this.table = Table.fromTable(
+      cdkTable.fromTableArn(stack, "SubjectTable", props.tableArn)
+    );
+  }
 
-new AppsyncResolver<{ id: string }, Person>(
-  api,
-  'getPerson',
-  {
-    fieldName: 'getPerson',
-    typeName: 'Query',
-  },
-  ($context) => {
-    return table.appsync.getItem({
-      key: {
-        id: {
-          S: $context.arguments.id,
-        },
-      },
+  public run(
+    transformFn: TransformFunctionType<T>,
+    options?: ScanTableOptions
+  ) {
+    const totalSegments = options?.segments ?? 10;
+    const segments = Array.from({ length: totalSegments }, (_, i) => i);
+
+    new StepFunction(stack, "MigrationStepFunction", async () => {
+      return $SFN.map(segments, async (_, index) => {
+        let lastEvaluatedKey;
+        let firstRun = true;
+
+        while (firstRun || lastEvaluatedKey) {
+          firstRun = false;
+
+          const result = await $AWS.DynamoDB.Scan({
+            Table: this.table,
+            TotalSegments: totalSegments,
+            Segment: index,
+          });
+
+          result.LastEvaluatedKey = result.LastEvaluatedKey;
+
+          new Function(
+            stack,
+            "MigrationCallbackFunction",
+            await transformFn(this.table, result)
+          );
+        }
+      });
     });
-  },
-);
+
+    return this;
+  }
+}
