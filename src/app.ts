@@ -60,7 +60,7 @@ export class Migration<T extends object> extends Stack {
     super(scope, id);
 
     this.table = Table.fromTable(
-      cdkTable.fromTableArn(scope, "SubjectTable", props.tableArn)
+      cdkTable.fromTableArn(this, "SubjectTable", props.tableArn)
     );
   }
 
