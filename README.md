@@ -20,7 +20,7 @@ sequenceDiagram
   par Custom Resource to DynamoDB Table
     Step Functions->>+DynamoDB Table: Update Items
   end
-  Custom Resource->>:Migrations History Table: Migration X Complete
+  Custom Resource->>Migrations History Table: Migration X Complete
   Custom Resource->>-CloudFormation: End
   CloudFormation-->>-User: Update Complete
 ```
