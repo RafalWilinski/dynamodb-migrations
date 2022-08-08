@@ -1,6 +1,6 @@
 import { App, CfnOutput, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { MigrationsManager } from "../app";
+import { MigrationsManager } from "../";
 
 const app = new App();
 

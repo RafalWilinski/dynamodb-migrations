@@ -94,3 +94,9 @@ export class Migration<T extends object> extends NestedStack {
     );
   }
 }
+
+export type MigrationFunction = (
+  scope: Construct,
+  id: string,
+  props: MigrationProps
+) => Migration<any>;
