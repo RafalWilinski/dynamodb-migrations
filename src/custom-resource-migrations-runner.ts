@@ -44,7 +44,7 @@ export default class CustomResourceMigrationsRunner extends Construct {
             Table: migrationsHistoryTable,
           });
 
-          console.log({ migrations });
+          console.log({ migrations, migrationStacks });
 
           // todo: Ensure chronological order of migrations.
           const migrationsToRun = migrationStacks.filter(

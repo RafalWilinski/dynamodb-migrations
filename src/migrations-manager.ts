@@ -54,14 +54,18 @@ export class MigrationsManager extends Construct {
       const migrationStack = require(path.resolve(
         migrationsDir,
         migrationFile
-      ));
+      )).migration(this, migrationFile);
 
-      migrationStacks.push(migrationStack.migration(this, migrationFile));
+      console.log({ migrationFile, migrationStack });
+
+      migrationStacks.push(migrationStack);
     }
 
     const onEventHandler = new CustomResourceMigrationsRunner(
       this,
       "MigrationsRunner",
+      //todo: For some reason migrationStacks arent' passed properly.
+      // consider passing just SFN ARNs and recreating them inside migrationsRunner ( need to add a cdk.output?)
       { migrationsHistoryTable, migrationFiles, migrationStacks }
     );
 

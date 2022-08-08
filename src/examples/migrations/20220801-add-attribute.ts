@@ -12,6 +12,7 @@ export const migration: MigrationFunction = (scope, migrationName) => {
     migrationName,
   });
 
+  // todo: just use table from props - const table = props.table;
   const table = Table.fromTable(
     cdkTable.fromTableArn(scope, "TargetTable", tableArn)
   );
