@@ -1,4 +1,4 @@
-import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
+// import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
 import {
   CloudFormationCustomResourceEvent,
   CloudFormationCustomResourceResponse,
@@ -7,10 +7,12 @@ import {
 } from "aws-lambda";
 import { Construct } from "constructs";
 import { $AWS, Function, Table } from "functionless";
+import { Migration } from "./migration";
 import { MigrationHistoryItem } from "./migrations-manager";
 
 export type CustomResourceMigrationsRunnerProps = {
   migrationFiles: string[];
+  migrationStacks: Migration<any>[];
   migrationsHistoryTable: Table<MigrationHistoryItem, "id">;
 };
 
@@ -22,18 +24,15 @@ export default class CustomResourceMigrationsRunner extends Construct {
   constructor(
     scope: Construct,
     id: string,
-    props: CustomResourceMigrationsRunnerProps
+    {
+      migrationsHistoryTable,
+      migrationStacks,
+    }: CustomResourceMigrationsRunnerProps
   ) {
     super(scope, id);
 
-    const migrationsHistoryTable = Table.fromTable<MigrationHistoryItem, "id">(
-      cdkTable.fromTableArn(
-        scope,
-        "MigrationsHistoryTable",
-        props.migrationsHistoryTable.tableArn
-      )
-    );
-
+    // todo/ to think: maybe this can be a step function too?
+    // I think it cannot because of custom resources provider - it requires a function
     this.function = new Function(
       scope,
       `${id}-MigrationsRunner`,
@@ -47,16 +46,23 @@ export default class CustomResourceMigrationsRunner extends Construct {
 
           console.log({ migrations });
 
-          const migrationsToRun = props.migrationFiles.filter(
-            (migrationFile) =>
+          // todo: Ensure chronological order of migrations.
+          const migrationsToRun = migrationStacks.filter(
+            (migrationStack) =>
               !(migrations.Items ?? []).find(
-                (migration) => migration.id.S === migrationFile
+                (migration) => migration.id.S === migrationStack.stackId
               )
           );
 
           console.log({ migrationsToRun });
 
-          // todo: Start the migrations
+          // todo: run in sequence actually
+          if (migrationsToRun[0].stateMachine) {
+            await migrationsToRun[0].stateMachine({});
+            // todo: store migration state
+            // todo: after finish, mark it as complete
+            // todo: maybe isCompleteHandler should take care of it?
+          }
 
           return {
             Status: "SUCCESS",

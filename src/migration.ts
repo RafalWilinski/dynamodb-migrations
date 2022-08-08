@@ -31,6 +31,8 @@ export class Migration<T extends object> extends NestedStack {
 
   public readonly migrationName: string;
 
+  public stateMachine?: StepFunction<any, any>;
+
   constructor(scope: Construct, id: string, props: MigrationProps) {
     super(scope, id);
 
@@ -57,7 +59,7 @@ export class Migration<T extends object> extends NestedStack {
       _transformFn
     );
 
-    return new StepFunction(
+    const stateMachine = new StepFunction(
       this,
       "MigrationStateMachine",
       {
@@ -92,6 +94,9 @@ export class Migration<T extends object> extends NestedStack {
         });
       }
     );
+
+    this.stateMachine = stateMachine;
+    return stateMachine;
   }
 }
 

@@ -5,6 +5,7 @@ import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { Table } from "functionless";
 import CustomResourceMigrationsRunner from "./custom-resource-migrations-runner";
+import { Migration } from "./migration";
 
 export type MigrationManagerProps = {
   /**
@@ -45,7 +46,7 @@ export class MigrationsManager extends Construct {
 
     const migrationsDir = path.resolve(props.migrationsDir);
     const migrationFiles = fs.readdirSync(migrationsDir);
-    let migrationStacks = [];
+    let migrationStacks: Migration<any>[] = [];
 
     for (const migrationFile of migrationFiles) {
       // Cannot use dynamic imports here due to synchronous nature of CDKs synthesis process
@@ -61,7 +62,7 @@ export class MigrationsManager extends Construct {
     const onEventHandler = new CustomResourceMigrationsRunner(
       this,
       "MigrationsRunner",
-      { migrationsHistoryTable, migrationFiles }
+      { migrationsHistoryTable, migrationFiles, migrationStacks }
     );
 
     const migrationsProvider = new Provider(this, "MigrationsProvider", {
