@@ -1,5 +1,5 @@
 import { App, CfnOutput, Stack } from "aws-cdk-lib";
-import { AttributeType, Table } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import { MigrationsManager } from "../app";
 
 const app = new App();
@@ -13,6 +13,7 @@ class TestStack extends Stack {
         name: "id",
         type: AttributeType.STRING,
       },
+      billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
     new MigrationsManager(this, "MigrationsManager", {

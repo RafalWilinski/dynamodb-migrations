@@ -1,7 +1,8 @@
+import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
-import { $AWS } from "functionless";
-import { ScanOutput } from "typesafe-dynamodb/lib/scan";
-import { Migration, MigrationProps } from "../../app";
+import { $AWS, Table } from "functionless";
+import { unmarshall, marshall } from "typesafe-dynamodb/lib/marshall";
+import { MigrationProps, Migration } from "../../migration";
 
 export type MigrationFunction = (
   scope: Construct,
@@ -9,21 +10,30 @@ export type MigrationFunction = (
   props: MigrationProps
 ) => Migration<any>;
 
-export const up: MigrationFunction = (scope, migrationName) =>
-  // Initialize Migration Stack
-  new Migration(scope, migrationName, {
-    tableArn: "arn:aws:dynamodb:us-east-1:123456789012:table/SubjectTable",
-  }).run(async (_table, result: ScanOutput<any, any, any>) => {
-    // Actual migration code goes here.
-    // Do something with each item in the table.
+const tableArn =
+  "arn:aws:dynamodb:us-east-1:085108115628:table/TestStack-TableCD117FA1-ZVV3ZWUOWPO";
+
+export const migration: MigrationFunction = (scope, migrationName) => {
+  const migrationDefinition = new Migration<any>(scope, migrationName, {
+    tableArn,
+    migrationName,
+  });
+
+  const table = Table.fromTable(
+    cdkTable.fromTableArn(scope, "SubjectTable", tableArn)
+  );
+
+  // Actual migration code goes here.
+  // For each item in the table
+  migrationDefinition.scan(async ({ result }) => {
     for (const i of result.Items as any[]) {
+      // Do the following:
       await $AWS.DynamoDB.PutItem({
-        Table: _table,
-        Item: {
-          id: {
-            S: `${i}_migrated`,
-          },
-        },
+        Table: table,
+        Item: marshall({ ...unmarshall(i), migratedAt: Date.now() }),
       });
     }
   });
+
+  return migrationDefinition;
+};
