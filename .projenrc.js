@@ -8,6 +8,10 @@ const project = new FunctionlessProject({
     prettier: true,
     quotes: "double",
   },
+  scripts: {
+    "deploy-example":
+      'cdk deploy --app "npx ts-node src/examples/test-stack.ts"',
+  },
 
   // deps: [],                /* Runtime dependencies of this module. */
   // description: undefined,  /* The description is just a string that helps people understand the purpose of the package. */

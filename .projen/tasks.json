@@ -82,6 +82,14 @@
         }
       ]
     },
+    "deploy-example": {
+      "name": "deploy-example",
+      "steps": [
+        {
+          "exec": "cdk deploy --app \"npx ts-node src/examples/test-stack.ts\""
+        }
+      ]
+    },
     "destroy": {
       "name": "destroy",
       "description": "Destroys your cdk app in the AWS cloud",

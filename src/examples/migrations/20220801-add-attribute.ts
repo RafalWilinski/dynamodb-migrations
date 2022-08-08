@@ -1,7 +1,7 @@
 import { Construct } from "constructs";
 import { $AWS } from "functionless";
 import { ScanOutput } from "typesafe-dynamodb/lib/scan";
-import { Migration, MigrationProps } from "../app";
+import { Migration, MigrationProps } from "../../app";
 
 export type MigrationFunction = (
   scope: Construct,
