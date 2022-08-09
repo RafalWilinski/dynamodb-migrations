@@ -4,7 +4,7 @@
 
 [Functionless](https://github.com/functionless/functionless)-based mini-framework for DynamoDB migrations in AWS CDK. `dynamodb-migrations` leverages [Step Functions](https://aws.amazon.com/step-functions/) to enable massively parallel reads and writes to DynamoDB making your migrations faster.
 
-`dynamodb-migrations` uses _"Migrations as Infrastructure"_ approach - each migration ends up being a separate State Machine, each one of them is deployed as a separate Stack.
+`dynamodb-migrations` uses _"Migrations as Infrastructure"_ approach - each migration ends up being a separate State Machine, each one of them is deployed as a separate Nested Stack.
 
 Migrations are ran as a part of CloudFormation deployment cycle - each migration, provisioned as a state machine, gets invoked via CloudFormation Custom Resource which is also part of the stack itself.
 
@@ -12,19 +12,26 @@ Migrations are ran as a part of CloudFormation deployment cycle - each migration
 sequenceDiagram
   participant User
   participant CloudFormation
-  User-->>+CloudFormation: Submits a Template via `cdk deploy`
+  User-->>+CloudFormation: Start deployment with a migration via `cdk deploy`
   Note right of CloudFormation: Update/Create Stack
   CloudFormation->>Cloud: Provision Application Resources
-  CloudFormation->>+Step Functions: Provision Migration State Machine
+  CloudFormation->>+Step Functions: Provision Migration State Machine as a Nested Stack
   Step Functions->>-CloudFormation: Provisioned
-  CloudFormation->>+Custom Resource: Perform Migration
+  CloudFormation->>+Custom Resource: Perform Migrations by starting executions
+  Custom Resource->>+Migrations History Table: Check which migrations have been already ran
+  Migrations History Table->>-Custom Resource: Here are migrations ran in the past
+  Note Right of Custom Resource: There's one new migration that hasn't been ran yet
   Custom Resource-->>Step Functions: Run State Machine
-  par Custom Resource to DynamoDB Table
-    Step Functions->>+DynamoDB Table: Update Items
+  Note left of Step Functions: State machine is an actual definition of migration
+  par Perform migration
+    Step Functions->>+DynamoDB Table: Update / Delete Items
   end
-  Custom Resource->>Migrations History Table: Migration X Complete
-  Custom Resource->>-CloudFormation: End
-  CloudFormation-->>-User: Update Complete
+  par Periodically check if migration is done
+    Custom Resource->>+Step Functions: Is done?
+  and State Machine Finished Execution
+    Custom Resource->>Migrations History Table: Store info about completed migration
+    Custom Resource->>-CloudFormation: End
+  end
 ```
 
 ### Questions to answer / notes
@@ -60,39 +67,54 @@ new MigrationsManager(this, 'MigrationsManager', {
 
 This will create an additional DynamoDB table that will be used to store the migrations history.
 
-3. Initialize a new migration by using the `dynamodb-migrations init` command:
-
-```bash
-npx dynamodb-migrations init --dir ./migrations --name my-migration
-```
-
 4. Write an actual migration.
 
-Following migration will add a new attribute called `migrated` to every item in the table.
+Create file called `20220101-add-attribute.ts` in the `migrationsDir` and paste following contents. This migration will add a new attribute called `migrated` to every item in the table.
 
 ```ts
-import {
-  MigrationFunction,
-  ScanOutput,
-  $AWS,
-} from "@dynobase/dynamodb-migrations";
+import { $AWS } from "functionless";
+import { unmarshall, marshall } from "typesafe-dynamodb/lib/marshall";
+import { Migration, MigrationFunction } from "../..";
 
-export const up: MigrationFunction = (scope, migrationName) =>
-  new Migration(scope, migrationName, {
-    tableArn: "arn:aws:dynamodb:us-east-1:123456789012:table/SubjectTable", // can be also read from StackOutputs
-  }).run(async (_table, result: ScanOutput<any, any, any>) => {
-    for (const item of result.Items as any[]) {
+const tableArn =
+  "arn:aws:dynamodb:us-east-1:085108115628:table/TestStack-TableCD117FA1-ZVV3ZWUOWPO";
+
+export const migration: MigrationFunction = (scope, migrationName) => {
+  const migrationDefinition = new Migration<any>(scope, migrationName, {
+    tableArn,
+    migrationName,
+  });
+
+  const table = migrationDefinition.table;
+
+  // Actual migration code goes here.
+  // For each item in the table
+  migrationDefinition.scan(async ({ result }) => {
+    for (const i of result.Items as any[]) {
+      // Do the following
       await $AWS.DynamoDB.PutItem({
-        Table: _table,
-        Item: {
-          ...item,
-          migrated: {
-            S: `migrated`,
-          },
-        },
+        Table: table,
+        // Add migratedAt attribute to the item
+        Item: marshall({ ...unmarshall(i), migratedAt: Date.now() }),
       });
     }
   });
+
+  return migrationDefinition;
+};
 ```
 
 And that's it! This migration will be executed as a part of the next `cdk deploy` command fully under CloudFormation's control. After successfully running it, the migration will be marked as `migrated` in the migrations history table.
+
+## Todo
+
+- [x] Do not re-run previously applied migrations
+- [ ] Add an option for disposing state machines after running migrations
+- [ ] Distinguish up/down migrations - if rollback is being performed, then Custom Resource should call `down` migration which will reverse the effect of the `up` migration
+- [ ] Dry runs
+- [ ] CLI for creating new migration files
+- [ ] Better contract for writing migrations/semantics
+- [ ] Reporting progress
+- [ ] Storing `executionId` in the migrations history table
+- [ ] Package and publish to NPM
+- [ ] More examples

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import { aws_dynamodb, CustomResource } from "aws-cdk-lib";
+import { aws_dynamodb, CustomResource, Fn } from "aws-cdk-lib";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { Table } from "functionless";
@@ -12,16 +13,19 @@ export type MigrationManagerProps = {
    * Custom name for the DynamoDB table storing migrations
    */
   tableName?: string;
+  /**
+   * Directory where migration files are stored
+   */
   migrationsDir: string;
 };
 
+export type MigrationStatus = "success" | "in_progress" | "failure";
+
 export type MigrationHistoryItem = {
   id: string;
-  status: "success" | "in_progress" | "failure";
+  status: MigrationStatus;
   startedAt: string;
-  endedAt: string;
-  segments: number;
-  completedSegments?: number[];
+  endedAt?: string;
 };
 
 export class MigrationsManager extends Construct {
@@ -56,26 +60,41 @@ export class MigrationsManager extends Construct {
         migrationFile
       )).migration(this, migrationFile);
 
-      console.log({ migrationFile, migrationStack });
-
       migrationStacks.push(migrationStack);
     }
+
+    const migrationIdStateMachinePairs = migrationStacks.map((migration) => ({
+      stateMachineArn: Fn.importValue(
+        `${migration.migrationName}StateMachineArn`
+      ).toString(),
+      migrationId: migration.migrationName,
+    }));
 
     const onEventHandler = new CustomResourceMigrationsRunner(
       this,
       "MigrationsRunner",
-      //todo: For some reason migrationStacks arent' passed properly.
-      // consider passing just SFN ARNs and recreating them inside migrationsRunner ( need to add a cdk.output?)
-      { migrationsHistoryTable, migrationFiles, migrationStacks }
+      {
+        migrationsHistoryTable,
+        migrationIdStateMachinePairs,
+      }
     );
 
     const migrationsProvider = new Provider(this, "MigrationsProvider", {
+      // todo: add isCompleteHandler
       onEventHandler: onEventHandler.function.resource,
     });
 
     // Ensure migrations provider is ran after all nested stacks are created
-    migrationStacks.map((stack) =>
-      migrationsProvider.node.addDependency(stack)
+    migrationStacks.map((stack) => {
+      migrationsProvider.node.addDependency(stack);
+    });
+
+    // Allow custom resource to start execution of the migrations state machine
+    onEventHandler.function.resource.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["states:StartExecution"],
+        resources: migrationIdStateMachinePairs.map((m) => m.stateMachineArn),
+      })
     );
 
     new CustomResource(this, "MigrationsTrigger", {

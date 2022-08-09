@@ -1,4 +1,4 @@
-// import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
+import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 import {
   CloudFormationCustomResourceEvent,
   CloudFormationCustomResourceResponse,
@@ -7,12 +7,16 @@ import {
 } from "aws-lambda";
 import { Construct } from "constructs";
 import { $AWS, Function, Table } from "functionless";
-import { Migration } from "./migration";
-import { MigrationHistoryItem } from "./migrations-manager";
+import { marshall } from "typesafe-dynamodb/lib/marshall";
+import { MigrationHistoryItem, MigrationStatus } from "./migrations-manager";
+
+type MigrationIdStateMachineArnPair = {
+  migrationId: string;
+  stateMachineArn: string;
+};
 
 export type CustomResourceMigrationsRunnerProps = {
-  migrationFiles: string[];
-  migrationStacks: Migration<any>[];
+  migrationIdStateMachinePairs: MigrationIdStateMachineArnPair[];
   migrationsHistoryTable: Table<MigrationHistoryItem, "id">;
 };
 
@@ -26,42 +30,54 @@ export default class CustomResourceMigrationsRunner extends Construct {
     id: string,
     {
       migrationsHistoryTable,
-      migrationStacks,
+      migrationIdStateMachinePairs,
     }: CustomResourceMigrationsRunnerProps
   ) {
     super(scope, id);
 
-    // todo/ to think: maybe this can be a step function too?
-    // I think it cannot because of custom resources provider - it requires a function
     this.function = new Function(
       scope,
       `${id}-MigrationsRunner`,
       async (event: CloudFormationCustomResourceEvent) => {
         console.log(event);
 
+        const client = new SFNClient({});
+
         try {
-          const migrations = await $AWS.DynamoDB.Scan({
+          const storedMigrations = await $AWS.DynamoDB.Scan({
             Table: migrationsHistoryTable,
           });
 
-          console.log({ migrations, migrationStacks });
+          console.log({ storedMigrations, migrationIdStateMachinePairs });
 
           // todo: Ensure chronological order of migrations.
-          const migrationsToRun = migrationStacks.filter(
-            (migrationStack) =>
-              !(migrations.Items ?? []).find(
-                (migration) => migration.id.S === migrationStack.stackId
+          const migrationsToRun = migrationIdStateMachinePairs.filter(
+            (migrationStateMachinePair) =>
+              !(storedMigrations.Items ?? []).find(
+                (storedMigration) =>
+                  storedMigration.id.S === migrationStateMachinePair.migrationId
               )
           );
 
           console.log({ migrationsToRun });
 
-          // todo: run in sequence actually
-          if (migrationsToRun[0].stateMachine) {
-            await migrationsToRun[0].stateMachine({});
-            // todo: store migration state
-            // todo: after finish, mark it as complete
-            // todo: maybe isCompleteHandler should take care of it?
+          for (const migration of migrationsToRun) {
+            // todo: Depending on the cloudformation transition (success/rollback) we could either use Up or Down state machine
+            const command = new StartExecutionCommand({
+              stateMachineArn: migration.stateMachineArn,
+            });
+            const response = await client.send(command);
+
+            console.log({ migration, response });
+
+            await $AWS.DynamoDB.PutItem({
+              Table: migrationsHistoryTable,
+              Item: marshall({
+                id: migration.migrationId,
+                status: "in_progress" as MigrationStatus,
+                startedAt: response.startDate?.toISOString()!,
+              }),
+            });
           }
 
           return {

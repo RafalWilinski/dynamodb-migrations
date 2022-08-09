@@ -1,7 +1,8 @@
-import { NestedStack } from "aws-cdk-lib";
+import { CfnOutput, NestedStack } from "aws-cdk-lib";
 import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { LogLevel } from "aws-cdk-lib/aws-stepfunctions";
+import { camelCase } from "change-case";
 import { Construct } from "constructs";
 import {
   ITable,
@@ -31,12 +32,12 @@ export class Migration<T extends object> extends NestedStack {
 
   public readonly migrationName: string;
 
-  public stateMachine?: StepFunction<any, any>;
+  public stateMachineArn?: CfnOutput;
 
   constructor(scope: Construct, id: string, props: MigrationProps) {
     super(scope, id);
 
-    this.migrationName = props.migrationName;
+    this.migrationName = camelCase(props.migrationName.split(".")[0]);
     this.table = Table.fromTable(
       cdkTable.fromTableArn(this, "SubjectTable", props.tableArn)
     );
@@ -95,7 +96,13 @@ export class Migration<T extends object> extends NestedStack {
       }
     );
 
-    this.stateMachine = stateMachine;
+    console.log(this.migrationName);
+
+    this.stateMachineArn = new CfnOutput(this, "StateMachineArn", {
+      exportName: `${this.migrationName}StateMachineArn`,
+      value: stateMachine.resource.stateMachineArn,
+    });
+
     return stateMachine;
   }
 }

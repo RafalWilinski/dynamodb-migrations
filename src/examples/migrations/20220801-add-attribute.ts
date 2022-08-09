@@ -1,5 +1,4 @@
-import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
-import { $AWS, Table } from "functionless";
+import { $AWS } from "functionless";
 import { unmarshall, marshall } from "typesafe-dynamodb/lib/marshall";
 import { Migration, MigrationFunction } from "../..";
 
@@ -12,10 +11,7 @@ export const migration: MigrationFunction = (scope, migrationName) => {
     migrationName,
   });
 
-  // todo: just use table from props - const table = props.table;
-  const table = Table.fromTable(
-    cdkTable.fromTableArn(scope, "TargetTable", tableArn)
-  );
+  const table = migrationDefinition.table;
 
   // Actual migration code goes here.
   // For each item in the table
