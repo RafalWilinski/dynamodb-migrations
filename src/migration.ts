@@ -80,10 +80,11 @@ export class Migration<T extends object> extends NestedStack {
           while (firstRun || lastEvaluatedKey) {
             firstRun = false;
 
-            const result = await $AWS.DynamoDB.Scan({
+            const result: ScanOutput<any, any, any> = await $AWS.DynamoDB.Scan({
               Table: table,
               TotalSegments: totalSegments,
               Segment: index,
+              ExclusiveStartKey: lastEvaluatedKey,
             });
 
             if (result.LastEvaluatedKey) {
