@@ -7,6 +7,7 @@ import {
 } from "aws-lambda";
 import { Construct } from "constructs";
 import { $AWS, Function, Table } from "functionless";
+import sortBy from "lodash.sortby";
 import { marshall } from "typesafe-dynamodb/lib/marshall";
 import { MigrationHistoryItem, MigrationStatus } from "./migrations-manager";
 
@@ -50,17 +51,20 @@ export default class CustomResourceMigrationsRunner extends Construct {
 
           console.log({ storedMigrations, migrationIdStateMachinePairs });
 
-          // todo: Ensure chronological order of migrations.
-          const migrationsToRun = migrationIdStateMachinePairs.filter(
-            (migrationStateMachinePair) =>
-              !(storedMigrations.Items ?? []).find(
-                (storedMigration) =>
-                  storedMigration.id.S === migrationStateMachinePair.migrationId
-              )
+          const migrationsToRun = sortBy(
+            migrationIdStateMachinePairs.filter(
+              (migrationStateMachinePair) =>
+                !(storedMigrations.Items ?? []).find(
+                  (storedMigration) =>
+                    storedMigration.id.S ===
+                    migrationStateMachinePair.migrationId
+                )
+            ),
+            // migrationID starts with date
+            "migrationId"
           );
 
-          console.log({ migrationsToRun });
-
+          // Run migrations sequentially
           for (const migration of migrationsToRun) {
             // todo: Depending on the cloudformation transition (success/rollback) we could either use Up or Down state machine
             const command = new StartExecutionCommand({
