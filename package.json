@@ -19,6 +19,7 @@
     "post-upgrade": "npx projen post-upgrade",
     "pre-compile": "npx projen pre-compile",
     "prepare": "npx projen prepare",
+    "prerelease": "npx projen prerelease",
     "release": "npx projen release",
     "synth": "npx projen synth",
     "synth:silent": "npx projen synth:silent",

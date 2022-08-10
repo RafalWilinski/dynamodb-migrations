@@ -183,6 +183,14 @@
         }
       ]
     },
+    "prerelease": {
+      "name": "prerelease",
+      "steps": [
+        {
+          "exec": "npm run prepare && npm run compile && npm run package"
+        }
+      ]
+    },
     "release": {
       "name": "release",
       "description": "Prepare a release from \"main\" branch",

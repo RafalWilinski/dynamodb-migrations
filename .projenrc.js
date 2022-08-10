@@ -17,6 +17,7 @@ const project = new FunctionlessProject({
   scripts: {
     "deploy-example":
       'cdk deploy --app "npx ts-node src/examples/test-stack.ts"',
+    prerelease: "npm run prepare && npm run compile && npm run package",
   },
   description:
     "Functionless-based mini-framework for DynamoDB migrations in AWS CDK.",
