@@ -80,6 +80,7 @@ export default class CustomResourceMigrationsRunner extends Construct {
                 id: migration.migrationId,
                 status: "in_progress" as MigrationStatus,
                 startedAt: response.startDate?.toISOString()!,
+                executionArn: response.executionArn!,
               }),
             });
           }

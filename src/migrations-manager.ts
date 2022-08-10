@@ -25,6 +25,7 @@ export type MigrationHistoryItem = {
   id: string;
   status: MigrationStatus;
   startedAt: string;
+  executionArn: string;
   endedAt?: string;
 };
 

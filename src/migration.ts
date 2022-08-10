@@ -75,6 +75,7 @@ export class Migration<T extends object> extends NestedStack {
           const result: ScanOutput<any, any, any> = await $AWS.DynamoDB.Scan({
             Table: table,
             ...options,
+            // Ensure ExclusiveStartKey is not overwritten by options
             ExclusiveStartKey: lastEvaluatedKey,
           });
 
@@ -137,6 +138,7 @@ export class Migration<T extends object> extends NestedStack {
               Table: table,
               TotalSegments: totalSegments,
               ...options,
+              // Ensure Segment and ExclusiveStartKey are not overwritten by options
               Segment: index,
               ExclusiveStartKey: lastEvaluatedKey,
             });
