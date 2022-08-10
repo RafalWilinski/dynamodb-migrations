@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ExecutionStatus } from "@aws-sdk/client-sfn";
 import { aws_dynamodb, CustomResource, Fn } from "aws-cdk-lib";
-import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { Table } from "functionless";
+import CustomResourceIsMigrationCompleteChecker from "./custom-resource-is-migration-complete";
 import CustomResourceMigrationsRunner from "./custom-resource-migrations-runner";
 import { Migration } from "./migration";
 
@@ -19,11 +20,9 @@ export type MigrationManagerProps = {
   migrationsDir: string;
 };
 
-export type MigrationStatus = "success" | "in_progress" | "failure";
-
 export type MigrationHistoryItem = {
   id: string;
-  status: MigrationStatus;
+  status: ExecutionStatus;
   startedAt: string;
   executionArn: string;
   endedAt?: string;
@@ -64,6 +63,7 @@ export class MigrationsManager extends Construct {
 
         migrationStacks.push(migrationStack);
       } catch (e) {
+        console.log({ e });
         throw new Error(`Error loading migration file ${migrationFile}: ${e}`);
       }
     }
@@ -84,9 +84,18 @@ export class MigrationsManager extends Construct {
       }
     );
 
+    const isCompleteHandler = new CustomResourceIsMigrationCompleteChecker(
+      this,
+      "MigrationsStatusChecker",
+      {
+        migrationsHistoryTable,
+        migrationIdStateMachinePairs,
+      }
+    );
+
     const migrationsProvider = new Provider(this, "MigrationsProvider", {
-      // todo: add isCompleteHandler
       onEventHandler: onEventHandler.function.resource,
+      isCompleteHandler: isCompleteHandler.function.resource,
     });
 
     // Ensure migrations provider is ran after all nested stacks are created
@@ -94,19 +103,12 @@ export class MigrationsManager extends Construct {
       migrationsProvider.node.addDependency(stack);
     });
 
-    // Allow custom resource to start execution of the migrations state machine
-    onEventHandler.function.resource.addToRolePolicy(
-      new PolicyStatement({
-        actions: ["states:StartExecution"],
-        resources: migrationIdStateMachinePairs.map((m) => m.stateMachineArn),
-      })
-    );
-
     new CustomResource(this, "MigrationsTrigger", {
       serviceToken: migrationsProvider.serviceToken,
       properties: {
         // Force re-running the migrations every time the stack is updated
         timestamp: Date.now(),
+        migrationIdStateMachinePairs,
       },
     });
   }

@@ -42,7 +42,7 @@ export class Migration<T extends object> extends NestedStack {
 
   public query(
     transformFn: TransformFunctionType<T>,
-    options?: QueryInput<T, string, string, string, keyof T, any>
+    _options?: QueryInput<T, string, string, string, keyof T, any>
   ) {
     // "this" cannot be referenced in a Function.
     const table = this.table;
@@ -72,12 +72,21 @@ export class Migration<T extends object> extends NestedStack {
         while (firstRun || lastEvaluatedKey) {
           firstRun = false;
 
-          const result: ScanOutput<any, any, any> = await $AWS.DynamoDB.Scan({
-            Table: table,
-            ...options,
-            // Ensure ExclusiveStartKey is not overwritten by options
-            ExclusiveStartKey: lastEvaluatedKey,
-          });
+          const result: QueryOutput<T, keyof T, any> =
+            await $AWS.DynamoDB.Query({
+              Table: table,
+              // Todo: figure out how to pass in options
+              // KeyConditionExpression: options?.KeyConditionExpression,
+              // FilterExpression: options?.FilterExpression,
+              // AttributesToGet: options?.AttributesToGet,
+              // ConsistentRead: options?.ConsistentRead,
+              // KeyConditions: options?.KeyConditions,
+              // QueryFilter: options?.QueryFilter,
+              // IndexName: options?.IndexName,
+              // ScanIndexForward: options?.ScanIndexForward,
+              // Limit: options?.Limit,
+              ExclusiveStartKey: lastEvaluatedKey,
+            });
 
           if (result.LastEvaluatedKey) {
             lastEvaluatedKey = result.LastEvaluatedKey;
@@ -134,14 +143,21 @@ export class Migration<T extends object> extends NestedStack {
           while (firstRun || lastEvaluatedKey) {
             firstRun = false;
 
-            const result: ScanOutput<any, any, any> = await $AWS.DynamoDB.Scan({
-              Table: table,
-              TotalSegments: totalSegments,
-              ...options,
-              // Ensure Segment and ExclusiveStartKey are not overwritten by options
-              Segment: index,
-              ExclusiveStartKey: lastEvaluatedKey,
-            });
+            const result: ScanOutput<T, keyof T, any> =
+              await $AWS.DynamoDB.Scan({
+                Table: table,
+                TotalSegments: totalSegments,
+                // Todo: figure out how to pass in options
+                // FilterExpression: options?.FilterExpression,
+                // AttributesToGet: options?.AttributesToGet,
+                // ConsistentRead: options?.ConsistentRead,
+                // ProjectionExpression: options?.ProjectionExpression,
+                // IndexName: options?.IndexName,
+                // ConditionalOperator: options?.ConditionalOperator,
+                // Limit: options?.Limit,
+                Segment: index,
+                ExclusiveStartKey: lastEvaluatedKey,
+              });
 
             if (result.LastEvaluatedKey) {
               lastEvaluatedKey = result.LastEvaluatedKey;

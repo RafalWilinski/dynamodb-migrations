@@ -1,15 +1,18 @@
-import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import {
+  ExecutionStatus,
+  SFNClient,
+  StartExecutionCommand,
+} from "@aws-sdk/client-sfn";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   CloudFormationCustomResourceEvent,
   CloudFormationCustomResourceResponse,
-  CloudFormationCustomResourceSuccessResponse,
-  CloudFormationCustomResourceFailedResponse,
 } from "aws-lambda";
 import { Construct } from "constructs";
 import { $AWS, Function, Table } from "functionless";
 import sortBy from "lodash.sortby";
 import { marshall } from "typesafe-dynamodb/lib/marshall";
-import { MigrationHistoryItem, MigrationStatus } from "./migrations-manager";
+import { MigrationHistoryItem } from "./migrations-manager";
 
 type MigrationIdStateMachineArnPair = {
   migrationId: string;
@@ -39,7 +42,9 @@ export default class CustomResourceMigrationsRunner extends Construct {
     this.function = new Function(
       scope,
       `${id}-MigrationsRunner`,
-      async (event: CloudFormationCustomResourceEvent) => {
+      async (
+        event: CloudFormationCustomResourceEvent
+      ): Promise<CloudFormationCustomResourceResponse> => {
         console.log(event);
 
         const client = new SFNClient({});
@@ -78,7 +83,7 @@ export default class CustomResourceMigrationsRunner extends Construct {
               Table: migrationsHistoryTable,
               Item: marshall({
                 id: migration.migrationId,
-                status: "in_progress" as MigrationStatus,
+                status: "RUNNING" as ExecutionStatus,
                 startedAt: response.startDate?.toISOString()!,
                 executionArn: response.executionArn!,
               }),
@@ -87,13 +92,32 @@ export default class CustomResourceMigrationsRunner extends Construct {
 
           return {
             Status: "SUCCESS",
-          } as CloudFormationCustomResourceSuccessResponse;
+            LogicalResourceId: event.LogicalResourceId,
+            PhysicalResourceId: "DYNAMODB_MIGRATIONS_MANAGER",
+            StackId: event.StackId,
+            RequestId: event.RequestId,
+          };
         } catch (error) {
+          console.error({ error });
+
           return {
             Status: "FAILED",
-          } as CloudFormationCustomResourceFailedResponse;
+            Reason: (error as Error).message,
+            LogicalResourceId: event.LogicalResourceId,
+            PhysicalResourceId: "DYNAMODB_MIGRATIONS_MANAGER",
+            StackId: event.StackId,
+            RequestId: event.RequestId,
+          };
         }
       }
+    );
+
+    // Allow custom resource to start execution of the migrations state machine
+    this.function.resource.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["states:StartExecution"],
+        resources: migrationIdStateMachinePairs.map((m) => m.stateMachineArn),
+      })
     );
   }
 }
