@@ -1,7 +1,9 @@
 {
-  "name": "dynamodb-mass-update",
+  "name": "@dynobase/dynamodb-migrations",
+  "description": "Functionless-based mini-framework for DynamoDB migrations in AWS CDK.",
   "scripts": {
     "build": "npx projen build",
+    "bump": "npx projen bump",
     "bundle": "npx projen bundle",
     "clobber": "npx projen clobber",
     "compile": "npx projen compile",
@@ -17,11 +19,13 @@
     "post-upgrade": "npx projen post-upgrade",
     "pre-compile": "npx projen pre-compile",
     "prepare": "npx projen prepare",
+    "release": "npx projen release",
     "synth": "npx projen synth",
     "synth:silent": "npx projen synth:silent",
     "test": "npx projen test",
     "test:update": "npx projen test:update",
     "test:watch": "npx projen test:watch",
+    "unbump": "npx projen unbump",
     "upgrade": "npx projen upgrade",
     "watch": "npx projen watch",
     "projen": "npx projen"
@@ -49,6 +53,7 @@
     "npm-check-updates": "^15",
     "prettier": "^2.7.1",
     "projen": "^0.61.1",
+    "standard-version": "^9",
     "ts-jest": "^28.0.7",
     "ts-node": "^10.9.1",
     "ts-patch": "^2.0.1",
@@ -57,7 +62,7 @@
   "dependencies": {
     "@aws-cdk/aws-appsync-alpha": "^2.36.0-alpha.0",
     "@aws-sdk/client-sfn": "^3.145.0",
-    "@types/aws-lambda": "^8.10.101",
+    "@types/aws-lambda": "^8.10.102",
     "aws-cdk-lib": "^2.1.0",
     "change-case": "^4.1.2",
     "constructs": "^10.0.5",

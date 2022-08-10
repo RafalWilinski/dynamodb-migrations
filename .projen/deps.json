@@ -9,7 +9,15 @@
       "type": "build"
     },
     {
+      "name": "@types/change-case",
+      "type": "build"
+    },
+    {
       "name": "@types/jest",
+      "type": "build"
+    },
+    {
+      "name": "@types/lodash.sortby",
       "type": "build"
     },
     {
@@ -88,6 +96,11 @@
       "type": "build"
     },
     {
+      "name": "standard-version",
+      "version": "^9",
+      "type": "build"
+    },
+    {
       "name": "ts-jest",
       "type": "build"
     },
@@ -108,8 +121,20 @@
       "type": "runtime"
     },
     {
+      "name": "@aws-sdk/client-sfn",
+      "type": "runtime"
+    },
+    {
+      "name": "@types/aws-lambda",
+      "type": "runtime"
+    },
+    {
       "name": "aws-cdk-lib",
       "version": "^2.1.0",
+      "type": "runtime"
+    },
+    {
+      "name": "change-case",
       "type": "runtime"
     },
     {
@@ -119,6 +144,10 @@
     },
     {
       "name": "functionless",
+      "type": "runtime"
+    },
+    {
+      "name": "lodash.sortby",
       "type": "runtime"
     },
     {
