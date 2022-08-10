@@ -54,14 +54,18 @@ export class MigrationsManager extends Construct {
     let migrationStacks: Migration<any>[] = [];
 
     for (const migrationFile of migrationFiles) {
-      // Cannot use dynamic imports here due to synchronous nature of CDKs synthesis process
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const migrationStack = require(path.resolve(
-        migrationsDir,
-        migrationFile
-      )).migration(this, migrationFile);
+      try {
+        // Cannot use dynamic imports here due to synchronous nature of CDKs synthesis process
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const migrationStack = require(path.resolve(
+          migrationsDir,
+          migrationFile
+        )).migration(this, migrationFile);
 
-      migrationStacks.push(migrationStack);
+        migrationStacks.push(migrationStack);
+      } catch (e) {
+        throw new Error(`Error loading migration file ${migrationFile}: ${e}`);
+      }
     }
 
     const migrationIdStateMachinePairs = migrationStacks.map((migration) => ({
