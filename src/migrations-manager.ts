@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ExecutionStatus } from "@aws-sdk/client-sfn";
-import { aws_dynamodb, CustomResource, Fn } from "aws-cdk-lib";
+import { aws_dynamodb, CustomResource, Duration, Fn } from "aws-cdk-lib";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { Table } from "functionless";
@@ -14,10 +14,19 @@ export type MigrationManagerProps = {
    * Custom name for the DynamoDB table storing migrations
    */
   tableName?: string;
+
   /**
    * Directory where migration files are stored
    */
   migrationsDir: string;
+
+  /**
+   * Maximum time that can be allocated for all migrations applied during one deployment.
+   * Cannot exceed 2 hours, it's CloudFormation's hard limitation.
+   *
+   * @default Duration.hours(2)
+   */
+  totalMigrationsTimeout?: Duration;
 };
 
 export type MigrationHistoryItem = {
@@ -31,8 +40,13 @@ export type MigrationHistoryItem = {
 export class MigrationsManager extends Construct {
   public readonly migrationsHistoryTable: Table<MigrationHistoryItem, "id">;
 
+  public readonly totalMigrationsTimeout: Duration;
+
   constructor(scope: Construct, id: string, props: MigrationManagerProps) {
     super(scope, id);
+
+    this.totalMigrationsTimeout =
+      props.totalMigrationsTimeout ?? Duration.hours(2);
 
     const migrationsHistoryTable = new Table<MigrationHistoryItem, "id">(
       scope,
@@ -94,6 +108,8 @@ export class MigrationsManager extends Construct {
     );
 
     const migrationsProvider = new Provider(this, "MigrationsProvider", {
+      totalTimeout: this.totalMigrationsTimeout,
+      queryInterval: Duration.seconds(10),
       onEventHandler: onEventHandler.function.resource,
       isCompleteHandler: isCompleteHandler.function.resource,
     });

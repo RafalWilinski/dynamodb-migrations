@@ -119,3 +119,7 @@ And that's it! This migration will be executed as a part of the next `cdk deploy
 - [ ] Reporting progress
 - [ ] Package and publish to NPM
 - [ ] More examples
+
+## Limitations
+
+- Migrations cannot be running for longer than two hours, that's a custom resource provisioning limitation

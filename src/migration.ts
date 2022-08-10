@@ -1,4 +1,4 @@
-import { CfnOutput, NestedStack } from "aws-cdk-lib";
+import { CfnOutput, NestedStack, Duration } from "aws-cdk-lib";
 import { Table as cdkTable } from "aws-cdk-lib/aws-dynamodb";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { LogLevel } from "aws-cdk-lib/aws-stepfunctions";
@@ -13,11 +13,24 @@ import {
   $SFN,
 } from "functionless";
 import { QueryInput, QueryOutput } from "typesafe-dynamodb/lib/query";
-import { ScanOutput, ScanInput } from "typesafe-dynamodb/lib/scan";
+import { ScanInput, ScanOutput } from "typesafe-dynamodb/lib/scan";
 
 export type MigrationProps = {
+  /**
+   * ARN of the table to migrate.
+   */
   tableArn: string;
+
+  /**
+   * Name of the migration
+   */
   migrationName: string;
+
+  /**
+   * Maximum time to wait for the migration to complete.
+   * Defaults to 5 minutes.
+   */
+  timeout?: Duration;
 };
 
 export type TransformFunctionType<T extends object> = (input: {
@@ -31,9 +44,12 @@ export class Migration<T extends object> extends NestedStack {
 
   public stateMachineArn?: CfnOutput;
 
+  public readonly timeout: Duration;
+
   constructor(scope: Construct, id: string, props: MigrationProps) {
     super(scope, id);
 
+    this.timeout = props.timeout ?? Duration.minutes(5);
     this.migrationName = camelCase(props.migrationName.split(".")[0]);
     this.table = Table.fromTable(
       cdkTable.fromTableArn(this, "SubjectTable", props.tableArn)
@@ -58,6 +74,7 @@ export class Migration<T extends object> extends NestedStack {
       "MigrationStateMachine",
       {
         stateMachineName: this.migrationName,
+        timeout: this.timeout,
         logs: {
           destination: new LogGroup(this, "MigrationLogGroup", {
             retention: RetentionDays.ONE_WEEK,
