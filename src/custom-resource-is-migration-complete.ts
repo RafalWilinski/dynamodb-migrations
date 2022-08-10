@@ -6,7 +6,7 @@ import {
 import { CloudFormationCustomResourceEvent } from "aws-lambda";
 import { Construct } from "constructs";
 import { $AWS, Function, Table } from "functionless";
-import { marshall } from "typesafe-dynamodb/lib/marshall";
+import { marshall, unmarshall } from "typesafe-dynamodb/lib/marshall";
 import { MigrationHistoryItem } from "./migrations-manager";
 
 type MigrationIdStateMachineArnPair = {
@@ -58,8 +58,19 @@ export default class CustomResourceIsMigrationCompleteChecker extends Construct 
             );
           }
 
+          const item = unmarshall(migrationEntry.Item);
+
+          if (
+            item.status === "ABORTED" ||
+            item.status === "FAILED" ||
+            item.status === "SUCCEEDED" ||
+            item.status === "TIMED_OUT"
+          ) {
+            continue;
+          }
+
           const command = new DescribeExecutionCommand({
-            executionArn: migrationEntry.Item?.executionArn.S,
+            executionArn: item.executionArn,
           });
           const response = await client.send(command);
 
