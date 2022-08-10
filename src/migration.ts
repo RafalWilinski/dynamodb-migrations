@@ -31,6 +31,11 @@ export type MigrationProps = {
    * Defaults to 5 minutes.
    */
   timeout?: Duration;
+
+  /**
+   * Description of the migration for documentation purposes.
+   */
+  description?: string;
 };
 
 export type TransformFunctionType<T extends object> = (input: {
@@ -46,9 +51,12 @@ export class Migration<T extends object> extends NestedStack {
 
   public readonly timeout: Duration;
 
+  public readonly description?: string;
+
   constructor(scope: Construct, id: string, props: MigrationProps) {
     super(scope, id);
 
+    this.description = props.description;
     this.timeout = props.timeout ?? Duration.minutes(5);
     this.migrationName = camelCase(props.migrationName.split(".")[0]);
     this.table = Table.fromTable(
