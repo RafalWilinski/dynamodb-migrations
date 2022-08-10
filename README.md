@@ -109,12 +109,13 @@ And that's it! This migration will be executed as a part of the next `cdk deploy
 ## Todo
 
 - [x] Do not re-run previously applied migrations
+- [x] Query and Scan functionality
+- [x] Storing `executionArn` in the migrations history table
 - [ ] Add an option for disposing state machines after running migrations
 - [ ] Distinguish up/down migrations - if rollback is being performed, then Custom Resource should call `down` migration which will reverse the effect of the `up` migration
 - [ ] Dry runs
 - [ ] CLI for creating new migration files
 - [ ] Better contract for writing migrations/semantics
 - [ ] Reporting progress
-- [ ] Storing `executionId` in the migrations history table
 - [ ] Package and publish to NPM
 - [ ] More examples
