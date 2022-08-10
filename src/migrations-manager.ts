@@ -1,7 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import { ExecutionStatus } from "@aws-sdk/client-sfn";
-import { aws_dynamodb, CustomResource, Duration, Fn } from "aws-cdk-lib";
+import {
+  aws_dynamodb,
+  CfnOutput,
+  CustomResource,
+  Duration,
+  Fn,
+} from "aws-cdk-lib";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { Table } from "functionless";
@@ -126,6 +132,10 @@ export class MigrationsManager extends Construct {
         timestamp: Date.now(),
         migrationIdStateMachinePairs,
       },
+    });
+
+    new CfnOutput(this, "MigrationsTableNameOutput", {
+      value: migrationsHistoryTable.tableName,
     });
   }
 }
