@@ -27,3 +27,5 @@ class TestStack extends Stack {
 }
 
 new TestStack(app, "TestStack");
+
+export default app;
